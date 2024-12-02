@@ -1,9 +1,8 @@
 {
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {
-
+    "ghcr.io/username/features/swift:1": {
+      "version": "5.8"
+    }
   },
-  "build": {
-    "dockerfile": "Dockerfile"
-  }
 }

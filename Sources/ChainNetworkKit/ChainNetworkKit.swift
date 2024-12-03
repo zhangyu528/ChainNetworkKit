@@ -18,12 +18,15 @@ enum NetworkError: Error {
     case invalidURL
     case requestFailed(Error)
     case decodingFailed
+    case timeout
 }
 /// Network Configuration 
 final class NetConfig: @unchecked Sendable { 
     static let shared = NetConfig() 
     var baseURL: String = "" 
     var defaultHeaders: [String: String] = [:] 
+    var timeoutInterval: TimeInterval = 60
+
     private init() {}
 }
 /// Network Request Builder with Chainable API
@@ -35,6 +38,7 @@ final class NetworkRequestBuilder {
     private var headers: [String: String] = NetConfig.shared.defaultHeaders
     private var body: Data?
     private var parameters: [String: Any] = [:]
+    private var timeoutInterval = NetConfig.shared.timeoutInterval
 
     /// Set the URL
     func setURL(_ urlString: String) -> NetworkRequestBuilder {
@@ -88,6 +92,9 @@ final class NetworkRequestBuilder {
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(.requestFailed(error)))
+                return
+            } else if let error = error as NSError?, error.code == NSURLErrorTimedOut {
+                completion(.failure(.timeout))
                 return
             }
 

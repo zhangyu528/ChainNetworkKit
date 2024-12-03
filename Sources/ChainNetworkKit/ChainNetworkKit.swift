@@ -75,7 +75,7 @@ final class NetworkRequestBuilder {
             urlComponents.queryItems = self.parameters.map { 
                 URLQueryItem(name: $0.key, value: "\($0.value)") 
             } 
-        } else if self.method == .post {
+        } else if self.method == .post || self.method == .put {
             self.body = try? JSONSerialization.data(withJSONObject: self.parameters)
         }
 
@@ -88,6 +88,7 @@ final class NetworkRequestBuilder {
         request.httpMethod = self.method.rawValue
         request.allHTTPHeaderFields = self.headers
         request.httpBody = self.body
+        request.timeoutInterval = self.timeoutInterval
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {

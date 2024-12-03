@@ -4,7 +4,6 @@
 import Foundation
 import FoundationNetworking
 
-import Foundation
 
 /// HTTP Methods
 enum HTTPMethod: String {
@@ -20,17 +19,26 @@ enum NetworkError: Error {
     case requestFailed(Error)
     case decodingFailed
 }
-
+/// Network Configuration 
+final class NetConfig: @unchecked Sendable { 
+    static let shared = NetConfig() 
+    var baseURL: String = "" 
+    var defaultHeaders: [String: String] = [:] 
+    private init() {}
+}
 /// Network Request Builder with Chainable API
 final class NetworkRequestBuilder {
+    
+    private var baseUrl = NetConfig.shared.baseURL
     private var url: URL?
     private var method: HTTPMethod = .get
-    private var headers: [String: String] = [:]
+    private var headers: [String: String] = NetConfig.shared.defaultHeaders
     private var body: Data?
+    private var parameters: [String: Any] = [:]
 
     /// Set the URL
     func setURL(_ urlString: String) -> NetworkRequestBuilder {
-        self.url = URL(string: urlString)
+        self.url = URL(string: baseUrl + urlString)
         return self
     }
 
@@ -46,23 +54,36 @@ final class NetworkRequestBuilder {
         return self
     }
 
-    /// Set the Request Body
-    func setBody<T: Encodable>(_ body: T) -> NetworkRequestBuilder {
-        self.body = try? JSONEncoder().encode(body)
-        return self
+    /// Set the Request Parameters 
+    func setParameters(_ parameters: [String: Any]) -> NetworkRequestBuilder { 
+        self.parameters = parameters 
+        return self 
     }
 
     /// Perform the request with completion handler
     func execute<T: Decodable>(decodeTo type: T.Type, completion: @escaping @Sendable (Result<T, NetworkError>) -> Void) {
-        guard let url = url else {
+        guard var urlComponents = URLComponents(string: url?.absoluteString ?? "" ) else {
             completion(.failure(.invalidURL))
             return
         }
+        //参数编码
+        if self.method == .get, !self.parameters.isEmpty { 
+            urlComponents.queryItems = self.parameters.map { 
+                URLQueryItem(name: $0.key, value: "\($0.value)") 
+            } 
+        } else if self.method == .post {
+            self.body = try? JSONSerialization.data(withJSONObject: self.parameters)
+        }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = method.rawValue
-        request.allHTTPHeaderFields = headers
-        request.httpBody = body
+        guard let finalURL = urlComponents.url else {
+             completion(.failure(.invalidURL)) 
+             return 
+        }
+
+        var request = URLRequest(url: finalURL)
+        request.httpMethod = self.method.rawValue
+        request.allHTTPHeaderFields = self.headers
+        request.httpBody = self.body
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {

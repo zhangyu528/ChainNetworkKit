@@ -16,9 +16,9 @@ struct User: Codable {
 }
 
 final class NetworkRequestBuilderTests: XCTestCase {
-    @MainActor
+
     func testValidGetRequest() {
-        let expectation = self.expectation(description: "Valid GET request should succeed")
+        let expectation: XCTestExpectation = self.expectation(description: "Valid GET request should succeed")
 
         NetworkRequestBuilder()
             .setURL("https://jsonplaceholder.typicode.com/users/1")
@@ -31,12 +31,9 @@ final class NetworkRequestBuilderTests: XCTestCase {
                     XCTFail("Request failed with error: \(error)")
                 }
                 
-                DispatchQueue.main.async {
-                    expectation.fulfill() // 确保在主线程上执行
-                }
+                expectation.fulfill()
             }
-
-        waitForExpectations(timeout: 5.0)
+        wait(for: [expectation], timeout: 5.0)
     }
 
     // func testInvalidURL() {

@@ -26,8 +26,14 @@ final class NetConfig: @unchecked Sendable {
     var baseURL: String = "" 
     var defaultHeaders: [String: String] = [:] 
     var timeoutInterval: TimeInterval = 60
+    var bearerTokenProvider: (() -> String?)?
 
     private init() {}
+
+    /// Set Bearer Token Provider
+    func setBearerTokenProvider(_ provider: @escaping() -> String) {
+        self.bearerTokenProvider = provider
+    }
 }
 /// Network Request Builder with Chainable API
 final class NetworkRequestBuilder {
@@ -89,6 +95,10 @@ final class NetworkRequestBuilder {
         request.allHTTPHeaderFields = self.headers
         request.httpBody = self.body
         request.timeoutInterval = self.timeoutInterval
+
+        if let bearerToken = NetConfig.shared.bearerTokenProvider?() {
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
+        }
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {

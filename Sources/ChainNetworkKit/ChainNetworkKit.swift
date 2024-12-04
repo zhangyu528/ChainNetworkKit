@@ -2,8 +2,14 @@
 // https://docs.swift.org/swift-book
 
 import Foundation
-import FoundationNetworking
+
+#if os(Linux) 
+import FoundationNetworking 
+#endif
+
+#if canImport(Security)
 import Security
+#endif
 
 /// HTTP Methods
 enum HTTPMethod: String {
@@ -21,12 +27,7 @@ enum NetworkError: Error {
     case timeout
     case serverTrustFailed
 }
-/// Server Trust Policy 
-enum ServerTrustPolicy { 
-    case performDefaultEvaluation(validateHost: Bool)
-    case pinCertificates(certificates: [SecCertificate], validateCertificateChain: Bool, validateHost: Bool) 
-    case disableEvaluation 
-}
+
 /// Network Configuration 
 final class NetConfig: @unchecked Sendable { 
     static let shared = NetConfig() 
@@ -36,7 +37,7 @@ final class NetConfig: @unchecked Sendable {
 
     var bearerTokenProvider: (() -> String?)?
     var serverTrustPolicies: [String: ServerTrustPolicy] = [:]
-    private var certificates: [SecCertificate] = []
+    private var certificates: [Data] = []
 
     private init() {}
 
@@ -46,11 +47,8 @@ final class NetConfig: @unchecked Sendable {
     }
     /// Load Certificates from Paths 
     func loadCertificates(from paths: [String]) { 
-        certificates = paths.compactMap { path in 
-            guard let certificateData = NSData(contentsOfFile: path) else { 
-                return nil 
-            } 
-            return SecCertificateCreateWithData(nil, certificateData) 
+        self.certificates = paths.compactMap { path in 
+            return NSData(contentsOfFile: path) as Data?
         } 
     }
 }
@@ -118,8 +116,8 @@ final class NetworkRequestBuilder {
         if let bearerToken = NetConfig.shared.bearerTokenProvider?() {
             request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
         }
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        let session = URLSession(configuration: .default, delegate: NetworkRequestServerTrust(), delegateQueue: nil)
+        let task = session.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(.requestFailed(error)))
                 return

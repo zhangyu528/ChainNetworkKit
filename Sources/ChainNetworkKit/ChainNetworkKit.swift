@@ -53,7 +53,8 @@ final class NetConfig: @unchecked Sendable {
     }
 }
 /// Network Request Builder with Chainable API
-final class NetworkRequestBuilder {
+
+final class NetworkRequestBuilder: @unchecked Sendable {
     
     private var baseUrl = NetConfig.shared.baseURL
     private var url: URL?
@@ -88,56 +89,79 @@ final class NetworkRequestBuilder {
     }
 
     /// Perform the request with completion handler
-    func execute<T: Decodable>(decodeTo type: T.Type, completion: @escaping @Sendable (Result<T, NetworkError>) -> Void) {
-        guard var urlComponents = URLComponents(string: url?.absoluteString ?? "" ) else {
+    func execute<T: Decodable>(decodeTo type: T.Type, 
+                               completion: @escaping @Sendable (Result<T, NetworkError>) -> Void) {
+        guard let request = self.buildRequest() else {
             completion(.failure(.invalidURL))
             return
         }
-        //参数编码
-        if self.method == .get, !self.parameters.isEmpty { 
-            urlComponents.queryItems = self.parameters.map { 
-                URLQueryItem(name: $0.key, value: "\($0.value)") 
-            } 
+
+        let session = URLSession(configuration: .default,
+                                 delegate: NetworkRequestServerTrust(), 
+                                 delegateQueue: nil) 
+        let task = session.dataTask(with: request) { [weak self] data, response, error  in 
+            self?.handleResponse(data: data, 
+                                response: response, 
+                                error: error, 
+                                decodeTo: type, 
+                                completion: completion) 
+        }
+        task.resume()
+    }
+
+    /// BUild the URLRequest
+    private func buildRequest() -> URLRequest? {
+        guard var urlComponents = URLComponents(string: self.url?.absoluteString ?? "") else {
+            return nil
+        }
+
+        if self.method == .get, !self.parameters.isEmpty {
+            urlComponents.queryItems = parameters.map {
+                URLQueryItem(name: $0.key, value: "\($0.value)")
+            }
         } else if self.method == .post || self.method == .put {
             self.body = try? JSONSerialization.data(withJSONObject: self.parameters)
         }
 
         guard let finalURL = urlComponents.url else {
-             completion(.failure(.invalidURL)) 
-             return 
+             return nil
         }
 
-        var request = URLRequest(url: finalURL)
-        request.httpMethod = self.method.rawValue
-        request.allHTTPHeaderFields = self.headers
-        request.httpBody = self.body
-        request.timeoutInterval = self.timeoutInterval
+        var request = URLRequest(url: finalURL) 
+        request.httpMethod = method.rawValue 
+        request.allHTTPHeaderFields = headers 
+        request.httpBody = body 
+        request.timeoutInterval = timeoutInterval 
+        if let bearerToken = NetConfig.shared.bearerTokenProvider?() { 
+            request.addValue(bearerToken, forHTTPHeaderField: "Authorization") 
+        } 
+        return request   
+    }
+    /// Handle the response
+    private func handleResponse<T: Decodable>(data: Data?, 
+                                              response: URLResponse?, 
+                                              error: Error?, 
+                                              decodeTo type: T.Type, 
+                                              completion: @escaping @Sendable (Result<T, NetworkError>) -> Void) {
 
-        if let bearerToken = NetConfig.shared.bearerTokenProvider?() {
-            request.addValue(bearerToken, forHTTPHeaderField: "Authorization")
+        if let error = error {
+            completion(.failure(.requestFailed(error)))
+            return
+        } else if let error = error as NSError?, error.code == NSURLErrorTimedOut {
+            completion(.failure(.timeout))
+            return
         }
-        let session = URLSession(configuration: .default, delegate: NetworkRequestServerTrust(), delegateQueue: nil)
-        let task = session.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(.requestFailed(error)))
-                return
-            } else if let error = error as NSError?, error.code == NSURLErrorTimedOut {
-                completion(.failure(.timeout))
-                return
-            }
 
-            guard let data = data else {
-                completion(.failure(.decodingFailed))
-                return
-            }
-
-            do {
-                let decodedResponse = try JSONDecoder().decode(T.self, from: data)
-                completion(.success(decodedResponse))
-            } catch {
-                completion(.failure(.decodingFailed))
-            }
+        guard let data = data else {
+            completion(.failure(.decodingFailed))
+            return
         }
-        task.resume()
+
+        do {
+            let decodedResponse = try JSONDecoder().decode(T.self, from: data)
+            completion(.success(decodedResponse))
+        } catch {
+            completion(.failure(.decodingFailed))
+        }
     }
 }

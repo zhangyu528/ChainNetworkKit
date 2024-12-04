@@ -3,7 +3,7 @@
 
 import Foundation
 import FoundationNetworking
-
+import Security
 
 /// HTTP Methods
 enum HTTPMethod: String {
@@ -19,6 +19,13 @@ enum NetworkError: Error {
     case requestFailed(Error)
     case decodingFailed
     case timeout
+    case serverTrustFailed
+}
+/// Server Trust Policy 
+enum ServerTrustPolicy { 
+    case performDefaultEvaluation(validateHost: Bool)
+    case pinCertificates(certificates: [SecCertificate], validateCertificateChain: Bool, validateHost: Bool) 
+    case disableEvaluation 
 }
 /// Network Configuration 
 final class NetConfig: @unchecked Sendable { 
@@ -26,13 +33,25 @@ final class NetConfig: @unchecked Sendable {
     var baseURL: String = "" 
     var defaultHeaders: [String: String] = [:] 
     var timeoutInterval: TimeInterval = 60
+
     var bearerTokenProvider: (() -> String?)?
+    var serverTrustPolicies: [String: ServerTrustPolicy] = [:]
+    private var certificates: [SecCertificate] = []
 
     private init() {}
 
     /// Set Bearer Token Provider
     func setBearerTokenProvider(_ provider: @escaping() -> String) {
         self.bearerTokenProvider = provider
+    }
+    /// Load Certificates from Paths 
+    func loadCertificates(from paths: [String]) { 
+        certificates = paths.compactMap { path in 
+            guard let certificateData = NSData(contentsOfFile: path) else { 
+                return nil 
+            } 
+            return SecCertificateCreateWithData(nil, certificateData) 
+        } 
     }
 }
 /// Network Request Builder with Chainable API

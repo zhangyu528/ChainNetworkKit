@@ -34,7 +34,7 @@ enum NetworkError: Error {
 final class NetworkRequestBuilder: @unchecked Sendable {
     
     private var baseUrl = NetConfig.shared.baseURL
-    private var url: URL?
+    private var api: URL?
     private var method: HTTPMethod = .get
     private var headers: [String: String] = NetConfig.shared.defaultHeaders
     private var body: Data?
@@ -42,8 +42,8 @@ final class NetworkRequestBuilder: @unchecked Sendable {
     private var timeoutInterval = NetConfig.shared.timeoutInterval
 
     /// Set the URL
-    func setURL(_ urlString: String) -> NetworkRequestBuilder {
-        self.url = URL(string: baseUrl + urlString)
+    func setApi(_ pathString: String) -> NetworkRequestBuilder {
+        self.api = URL(string: baseUrl + pathString)
         return self
     }
 
@@ -88,7 +88,7 @@ final class NetworkRequestBuilder: @unchecked Sendable {
 
     /// BUild the URLRequest
     private func buildRequest() -> URLRequest? {
-        guard var urlComponents = URLComponents(string: self.url?.absoluteString ?? "") else {
+        guard var urlComponents = URLComponents(string: self.api?.absoluteString ?? "") else {
             return nil
         }
 

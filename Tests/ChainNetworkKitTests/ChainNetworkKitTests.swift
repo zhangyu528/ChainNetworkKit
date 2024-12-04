@@ -21,7 +21,7 @@ final class NetworkRequestBuilderTests: XCTestCase {
         let expectation: XCTestExpectation = self.expectation(description: "Valid GET request should succeed")
 
         NetworkRequestBuilder()
-            .setURL("https://jsonplaceholder.typicode.com/users/1")
+            .setApi("/users/1")
             .setMethod(.get)
             .execute(decodeTo: User.self) { result in
                 switch result {

@@ -29,19 +29,20 @@ final class NetConfig: @unchecked Sendable {
     static let shared = NetConfig() 
     
     var environmentURLs: [Environment: String] = [:]
-    var env: Environment = .development {
-        didSet {
-            self.baseURL = environmentURLs[env] ?? ""
-            self.defaultHeaders = env.defaultHeaders
-            self.timeoutInterval = env.timeoutInterval
-        }
+    var env: Environment = .development
+    
+    var baseURL: String {
+        return environmentURLs[env] ?? ""
     }
-    var baseURL: String = ""
-    var defaultHeaders: [String: String] = [:]
-    var timeoutInterval: TimeInterval = 30
+    var defaultHeaders: [String: String] {
+        return env.defaultHeaders
+    }
+    var timeoutInterval: TimeInterval {
+        return env.timeoutInterval
+    }
 
     var bearerTokenProvider: (() -> String?)?
-    var serverTrustPolicies: [String: ServerTrustPolicy] = [:]
+    private var serverTrustPolicies: [String: ServerTrustPolicy] = [:]
     private var certificates: [Data] = []
 
     private init() {}

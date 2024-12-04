@@ -28,30 +28,7 @@ enum NetworkError: Error {
     case serverTrustFailed
 }
 
-/// Network Configuration 
-final class NetConfig: @unchecked Sendable { 
-    static let shared = NetConfig() 
-    var baseURL: String = "" 
-    var defaultHeaders: [String: String] = [:] 
-    var timeoutInterval: TimeInterval = 60
 
-    var bearerTokenProvider: (() -> String?)?
-    var serverTrustPolicies: [String: ServerTrustPolicy] = [:]
-    private var certificates: [Data] = []
-
-    private init() {}
-
-    /// Set Bearer Token Provider
-    func setBearerTokenProvider(_ provider: @escaping() -> String) {
-        self.bearerTokenProvider = provider
-    }
-    /// Load Certificates from Paths 
-    func loadCertificates(from paths: [String]) { 
-        self.certificates = paths.compactMap { path in 
-            return NSData(contentsOfFile: path) as Data?
-        } 
-    }
-}
 /// Network Request Builder with Chainable API
 
 final class NetworkRequestBuilder: @unchecked Sendable {

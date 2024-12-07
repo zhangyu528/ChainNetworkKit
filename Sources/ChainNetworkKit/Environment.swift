@@ -28,11 +28,11 @@ enum Environment {
 final class NetConfig: @unchecked Sendable { 
     static let shared = NetConfig() 
     
-    var environmentURLs: [Environment: String] = [:]
+    var environmentHosts: [Environment: String] = [:]
     var env: Environment = .development
     
-    var baseURL: String {
-        return environmentURLs[env] ?? ""
+    var host: String {
+        return environmentHosts[env] ?? ""
     }
     var defaultHeaders: [String: String] {
         return env.defaultHeaders

@@ -33,17 +33,18 @@ enum NetworkError: Error {
 
 final class NetworkRequestBuilder: @unchecked Sendable {
     
-    private var baseUrl = NetConfig.shared.baseURL
+    private var host = NetConfig.shared.host
     private var api: URL?
-    private var method: HTTPMethod = .get
+    private var method: HTTPMethod = .post
     private var headers: [String: String] = NetConfig.shared.defaultHeaders
     private var body: Data?
     private var parameters: [String: Any] = [:]
     private var timeoutInterval = NetConfig.shared.timeoutInterval
+    private var encoding: ParameterEncoding = .json
 
     /// Set the URL
     func setApi(_ pathString: String) -> NetworkRequestBuilder {
-        self.api = URL(string: baseUrl + pathString)
+        self.api = URL(string: host + pathString)
         return self
     }
 
@@ -64,6 +65,13 @@ final class NetworkRequestBuilder: @unchecked Sendable {
         self.parameters = parameters 
         return self 
     }
+
+    /// 设置参数编码方式
+    func setParameterEncoding(_ encoding: ParameterEncoding) -> NetworkRequestBuilder {
+        self.encoding = encoding
+        return self
+    }
+
 
     /// Perform the request with completion handler
     func execute<T: Decodable>(decodeTo type: T.Type, 
@@ -88,14 +96,16 @@ final class NetworkRequestBuilder: @unchecked Sendable {
 
     /// BUild the URLRequest
     private func buildRequest() -> URLRequest? {
-        guard var urlComponents = URLComponents(string: self.api?.absoluteString ?? "") else {
+        guard var urlComponents = URLComponents(string: self.host + (self.api?.absoluteString ?? "" )) else {
             return nil
         }
 
-        if self.method == .get, !self.parameters.isEmpty {
-            urlComponents.queryItems = parameters.map {
-                URLQueryItem(name: $0.key, value: "\($0.value)")
+        if self.method == .get, self.encoding == .queryString {
+            if let queryData = self.encoding.encode(parameters: self.parameters) {
+                urlComponents.query = String(data: queryData, encoding: .utf8)
             }
+        } else if self.encoding == .formURLEncoded {
+            self.body = self.encoding.encode(parameters: self.parameters)
         } else if self.method == .post || self.method == .put {
             self.body = try? JSONSerialization.data(withJSONObject: self.parameters)
         }
@@ -109,6 +119,8 @@ final class NetworkRequestBuilder: @unchecked Sendable {
         request.allHTTPHeaderFields = headers 
         request.httpBody = body 
         request.timeoutInterval = timeoutInterval 
+        request.setValue(self.encoding.contentType(), forHTTPHeaderField: "Content-Type")
+
         if let bearerToken = NetConfig.shared.bearerTokenProvider?() { 
             request.addValue(bearerToken, forHTTPHeaderField: "Authorization") 
         } 

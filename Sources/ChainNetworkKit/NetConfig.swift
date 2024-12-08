@@ -22,6 +22,16 @@ enum Environment {
             return 30.0
         }
     }
+
+    var isLoggingEnabled: Bool {
+        switch self {
+        case .development, .testing:
+            return true
+        case .production:
+            return false
+        }
+
+    }
 }
 
 /// Network Configuration 
@@ -29,7 +39,12 @@ final class NetConfig: @unchecked Sendable {
     static let shared = NetConfig() 
     
     var environmentHosts: [Environment: String] = [:]
-    var env: Environment = .development
+    var env: Environment = .development {
+        didSet {
+            // Automatically update logger configuration based on environment
+            NetLogger.shared.isLoggingEnabled = env.isLoggingEnabled
+        }
+    }
     
     var host: String {
         return environmentHosts[env] ?? ""

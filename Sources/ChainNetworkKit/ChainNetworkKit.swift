@@ -81,10 +81,16 @@ final class NetworkRequestBuilder: @unchecked Sendable {
             return
         }
 
+        // Log the request
+        NetLogger.shared.logRequest(request)
+
         let session = URLSession(configuration: .default,
                                  delegate: NetworkRequestServerTrust(), 
                                  delegateQueue: nil) 
         let task = session.dataTask(with: request) { [weak self] data, response, error  in 
+            // Log the response
+            NetLogger.shared.logResponse(response, data: data, error: error)
+            
             self?.handleResponse(data: data, 
                                 response: response, 
                                 error: error, 

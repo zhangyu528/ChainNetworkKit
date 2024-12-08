@@ -101,9 +101,8 @@ final class NetworkRequestBuilder: @unchecked Sendable {
         }
 
         if self.method == .get, self.encoding == .queryString {
-            if let queryData = self.encoding.encode(parameters: self.parameters) {
-                urlComponents.query = String(data: queryData, encoding: .utf8)
-            }
+            let queryData = self.encoding.encode(parameters: self.parameters)
+            urlComponents.query = String(data: queryData, encoding: .utf8)
         } else if self.encoding == .formURLEncoded {
             self.body = self.encoding.encode(parameters: self.parameters)
         } else if self.method == .post || self.method == .put {

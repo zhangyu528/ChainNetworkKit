@@ -6,7 +6,7 @@ final class NetConfigTests: XCTestCase {
     override func setUp() {
         super.setUp()
         // 在每个测试之前调用
-        NetConfig.shared.environmentURLs = [
+        NetConfig.shared.environmentHosts = [
             .development: "https://dev.example.com",
             .testing: "https://test.example.com",
             .production: "https://prod.example.com"
@@ -20,13 +20,13 @@ final class NetConfigTests: XCTestCase {
 
     func testBaseURL() {
         NetConfig.shared.env = .development
-        XCTAssertEqual(NetConfig.shared.baseURL, "https://dev.example.com")
+        XCTAssertEqual(NetConfig.shared.host, "https://dev.example.com")
 
         NetConfig.shared.env = .testing
-        XCTAssertEqual(NetConfig.shared.baseURL, "https://test.example.com")
+        XCTAssertEqual(NetConfig.shared.host, "https://test.example.com")
 
         NetConfig.shared.env = .production
-        XCTAssertEqual(NetConfig.shared.baseURL, "https://prod.example.com")
+        XCTAssertEqual(NetConfig.shared.host, "https://prod.example.com")
     }
 
     func testDefaultHeaders() {
